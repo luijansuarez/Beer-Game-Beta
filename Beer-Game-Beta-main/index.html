@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beer Game – Práctica (HTML)</title>
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#121a2b; --muted:#8da2c0; --text:#eaf1ff; --accent:#5ee1a6; --warn:#ffb020; --danger:#ff6b6b;
+      --card:#0f1729; --bd:#1f2a44;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial}
+    h1,h2,h3{margin:0 0 .5rem} h1{font-size:1.25rem} h2{font-size:1rem;color:var(--muted)}
+    .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+    .grid{display:grid;gap:16px}
+    .g-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .card{background:linear-gradient(180deg, var(--panel), var(--card));border:1px solid var(--bd);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    label{display:block;font-weight:600;margin:.25rem 0}
+    input,select,button{width:100%;padding:10px 12px;background:#0d1426;border:1px solid var(--bd);color:var(--text);border-radius:12px}
+    input[type=number]{appearance:textfield}
+    button{cursor:pointer;font-weight:700;letter-spacing:.2px}
+    button.primary{background:var(--accent);color:#072417;border:none}
+    button.ghost{background:transparent;border-color:var(--bd)}
+    .row{display:flex;gap:12px;align-items:center}
+    .row > *{flex:1}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#0a1429;border:1px solid var(--bd);color:var(--muted);font-size:12px}
+    .stat{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:12px;background:#0c152a;border:1px solid var(--bd)}
+    .stat .label{color:var(--muted);font-size:12px}
+    .stat .value{font-size:18px;font-weight:800}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:right}
+    th{text-align:center;color:var(--muted);font-weight:700}
+    td:first-child,th:first-child{text-align:left}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#0f1931;color:var(--muted);font-size:11px;border:1px solid var(--bd)}
+    .ok{color:var(--accent)} .warn{color:var(--warn)} .bad{color:var(--danger)}
+    canvas{width:100%;height:300px;background:#0c152a;border:1px solid var(--bd);border-radius:12px}
+    .kbd{font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;background:#0e1730;border:1px solid var(--bd);border-radius:6px;padding:2px 6px;color:#cfe1ff}
+    /* Tooltips */
+    .help{position:relative; display:inline-flex; align-items:center; gap:6px}
+    .help i{display:inline-block; width:16px; height:16px; border-radius:50%; border:1px solid var(--bd); text-align:center; line-height:16px; font-size:12px; font-style:normal; cursor:help; color:var(--text);}
+    .help .tip{position:absolute; left:20px; top:120%; background:#ffffff; color:#000000; border-radius:8px; padding:8px 10px; box-shadow:0 8px 24px rgba(0,0,0,.35); min-width:220px; max-width:320px; z-index:20; display:none}
+    .help:hover .tip{display:block}
+    .help.show .tip{display:block}
+    @media (max-width:900px){.g-2{grid-template-columns:1fr!important}.g-3{grid-template-columns:1fr!important}}
+  </style>
+</head>
+<body>
+  <div class="wrap grid">
+    <section class="card">
+      <h1>Beer Game – Práctica individual</h1>
+      <p class="pill">Reglas clásicas MIT: 4 eslabones, retrasos de órdenes y envíos, backorders y costos semanales.</p>
+      <div class="grid g-2">
+        <div class="card" style="padding:12px">
+          <h2>1) Tu rol</h2>
+          <label for="role">Selecciona tu rol</label>
+          <select id="role">
+            <option value="retailer">Retailer (minorista)</option>
+            <option value="wholesaler">Wholesaler (mayorista)</option>
+            <option value="distributor">Distributor (distribuidor)</option>
+            <option value="factory">Factory (productor)</option>
+          </select>
+          <div class="row" style="margin-top:10px">
+            <button id="start" class="primary">Iniciar nueva simulación</button>
+            <button id="reset" class="ghost">Reset</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label class="row" style="align-items:center;gap:8px"><input id="training" type="checkbox" style="width:auto"> Modo entrenamiento (permite deshacer 1 turno) – opcional</label>
+          </div>
+        </div>
+        <div class="card" style="padding:12px">
+          <h2>2) Parámetros (editables)</h2>
+          <div class="row">
+            <div><label>Semanas</label><input id="weeks" type="number" min="10" max="60" value="30" /></div>
+            <div><label>Inventario inicial por rol</label><input id="initInv" type="number" min="0" value="12" /></div>
+          </div>
+          <div class="row">
+            <div><label>Costo holding (u/sem)</label><input id="hCost" type="number" step="0.1" value="0.5" /></div>
+            <div><label>Costo backlog (u/sem)</label><input id="bCost" type="number" step="0.1" value="1" /></div>
+          </div>
+          <div class="row">
+            <div><label>Retraso de envío (semanas)</label><input id="shipDelay" type="number" min="0" max="5" value="2" /></div>
+            <div><label>Retraso de pedido (semanas)</label><input id="orderDelay" type="number" min="0" max="5" value="2" /></div>
+          </div>
+          <div class="row">
+            <div><label>Demanda base consumidor (u/sem)</label><input id="baseDemand" type="number" min="0" value="4" /></div>
+            <div><label>Demanda desde semana</label><input id="stepWeek" type="number" min="1" value="5" /></div>
+          </div>
+          <div class="row">
+            <div><label>Demanda escalón (u/sem desde semana)</label><input id="stepDemand" type="number" min="0" value="8" /></div>
+            <div>
+              <label>Ruido demanda (desv. est.)
+                <span class="help" tabindex="0" aria-label="Ayuda sobre ruido de demanda"><i>ℹ</i>
+                  <span class="tip">Variabilidad aleatoria de la demanda semanal, medida como <em>desviación estándar</em>. Un valor mayor introduce más incertidumbre y puede amplificar el efecto látigo. Si pones 0, la demanda es determinista.</span>
+                </span>
+              </label>
+              <input id="noise" type="number" step="0.1" value="0" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <div class="row" style="align-items:center">
+        <h2 style="flex:1">3) Evolución (Demanda vs. Pedidos)</h2>
+        <button id="export" class="ghost" style="flex:0 0 auto">Exportar CSV</button>
+      </div>
+      <canvas id="chart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>4) Panel de juego</h2>
+      <div class="grid g-3">
+        <div class="stat"><div class="label">Semana</div><div id="wk" class="value">—</div></div>
+        <div class="stat"><div class="label">Tu inventario <span class="help" tabindex="0" aria-label="Ayuda inventario"><i>ℹ</i><span class="tip">Unidades físicas disponibles al inicio de la decisión de la semana.</span></span></div><div id="myInv" class="value">—</div></div>
+        <div class="stat"><div class="label">Tu backlog <span class="help" tabindex="0" aria-label="Ayuda backlog"><i>ℹ</i><span class="tip">Pedidos de clientes que no has podido surtir aún. Se atienden primero la siguiente semana.</span></span></div><div id="myBack" class="value">—</div></div>
+        <div class="stat"><div class="label">Costo acumulado <span class="help" tabindex="0" aria-label="Ayuda costo acumulado"><i>ℹ</i><span class="tip">Suma de costos por semana: holding (inventario) + backlog (faltantes).</span></span></div><div id="myCost" class="value">—</div></div>
+        <div class="stat"><div class="label">Fill rate (acum) <span class="help" tabindex="0" aria-label="Ayuda fill rate"><i>ℹ</i><span class="tip">Porcentaje de demanda atendida (= unidades enviadas / demanda). Medido acumulado.</span></span></div><div id="myFR" class="value">—</div></div>
+        <div class="stat"><div class="label">BWE (orden/demanda) <span class="help" tabindex="0" aria-label="Ayuda BWE"><i>ℹ</i><span class="tip">Efecto látigo: varianza de pedidos dividida entre varianza de la demanda percibida. &gt;1 indica amplificación aguas arriba.</span></span></div><div id="myBWE" class="value">—</div></div>
+      </div>
+
+      <!-- Panel SEMANA EN CURSO (simplificado a 4 métricas) -->
+      <div id="current-week-panel" class="row" style="margin-top:14px;flex-wrap:wrap;gap:12px;background:#0c152a;border:1px solid var(--bd);border-radius:12px;padding:12px">
+        <div class="stat" style="flex:1;min-width:160px"><div class="label">Demanda de tu cliente (t) <span class="help" tabindex="0" aria-label="Ayuda demanda"><i>ℹ</i><span class="tip">Unidades que tu cliente solicita esta semana. Puede incluir ruido aleatorio si está activado.</span></span></div><div id="cwDemand" class="value">—</div></div>
+        <div class="stat" style="flex:1;min-width:160px"><div class="label">Pedido que llegará la próxima semana <span class="help" tabindex="0" aria-label="Ayuda arribo 1 semana"><i>ℹ</i><span class="tip">Cantidad que ya fue enviada por tu proveedor y arriba la <strong>próxima</strong> semana (primer elemento de la cola de envíos).</span></span></div><div id="cwArr1" class="value">—</div></div>
+        <div class="stat" style="flex:1;min-width:160px"><div class="label">Pedido que llegará en dos semanas <span class="help" tabindex="0" aria-label="Ayuda arribo 2 semanas"><i>ℹ</i><span class="tip">Cantidad en tránsito que llegará en <strong>dos</strong> semanas (segundo elemento de la cola de envíos).</span></span></div><div id="cwArr2" class="value">—</div></div>
+        <div class="stat" style="flex:1;min-width:160px"><div class="label">Posición de inventario <span class="help" tabindex="0" aria-label="Ayuda posición de inventario"><i>ℹ</i><span class="tip">Inventario + envíos en tránsito − backlog. Se compara contra el nivel objetivo (S) en políticas base-stock.</span></span></div><div id="cwPosInv" class="value">—</div></div>
+      </div>
+
+      <div style="margin-top:14px" class="row">
+        <div>
+          <label>Pedido a enviar esta semana (unidades)</label>
+          <input id="orderQty" type="number" min="0" value="4" />
+        </div>
+        <div style="flex:0 0 220px">
+          <label>&nbsp;</label>
+          <button id="submitOrder" class="primary">Confirmar pedido (<span class="kbd">Enter</span>)</button>
+        </div>
+        <div style="flex:0 0 140px">
+          <label>&nbsp;</label>
+          <button id="undo" class="ghost" disabled>Deshacer turno</button>
+        </div>
+      </div>
+      <p style="margin:10px 0 0;color:var(--muted)">Consejo: evita cambios bruscos; piensa en base-stock ≈ demanda media × (retrasos totales + 1).</p>
+    </section>
+
+    <section class="card">
+      <h2>5) Desempeño de todos los roles</h2>
+      <div class="grid g-2">
+        <div class="stat"><div class="label">Costo total cadena</div><div id="totCost" class="value">—</div></div>
+        <div class="stat"><div class="label">BWE cadena (promedio)</div><div id="totBWE" class="value">—</div></div>
+      </div>
+      <div style="overflow:auto;margin-top:10px">
+        <table id="rolesTbl"><thead><tr>
+          <th>Rol</th>
+          <th>Inventario prom <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Inventario actual (aprox. promedio simple para lectura rápida).</span></span></th>
+          <th>Backlog max <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Mayor acumulación de faltantes observada.</span></span></th>
+          <th>Fill rate % <span class="help" tabindex="0"><i>ℹ</i><span class="tip">% de demanda atendida (acumulado) por rol.</span></span></th>
+          <th>Var(Pedidos) <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Varianza de la serie de pedidos emitidos.</span></span></th>
+          <th>Var(Demanda) <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Varianza de la demanda percibida por ese rol.</span></span></th>
+          <th>BWE <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Efecto látigo: Var(Pedidos) / Var(Demanda).</span></span></th>
+          <th>Costo acum <span class="help" tabindex="0"><i>ℹ</i><span class="tip">Suma de costos de holding y backlog.</span></span></th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2>6) Historial</h2>
+      <div style="overflow:auto">
+        <table id="tbl"><thead><tr>
+          <th>t</th><th>Demanda Cliente</th><th>Orden recibida</th><th>Envío recibido</th><th>Se despachó</th><th>Inventario fin</th><th>Backlog fin</th><th>Pedido emitido</th><th>Costos t</th><th>Costos acum</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2>Cómo se calcula (resumen de reglas)</h2>
+      <ul>
+        <li>Cadena: <strong>Retailer → Wholesaler → Distributor → Factory</strong>.</li>
+        <li>Cada eslabón mantiene <em>inventario</em> y <em>backlog</em>. El backlog se satisface primero.</li>
+        <li>Retrasos: <strong>pedidos</strong> tardan <span id="odLbl">2</span> semanas; <strong>envíos</strong> tardan <span id="sdLbl">2</span> semanas.</li>
+        <li>Costos por semana: holding = <span id="hLbl">0.5</span>/u, backlog = <span id="bLbl">1</span>/u.</li>
+        <li>Demanda del consumidor: base <span id="bdLbl">4</span> u/sem; desde la semana <span id="swLbl">5</span> pasa a <span id="stLbl">8</span> u/sem.</li>
+        <li>Los otros tres roles juegan con política <em>base-stock</em> sobre posición de inventario.</li>
+      </ul>
+    </section>
+  </div>
+
+<script>
+(function(){
+  const $ = sel => document.querySelector(sel);
+  const roleSel = $('#role');
+  const weeksEl = $('#weeks');
+  const initInvEl = $('#initInv');
+  const hCostEl = $('#hCost');
+  const bCostEl = $('#bCost');
+  const shipDelayEl = $('#shipDelay');
+  const orderDelayEl = $('#orderDelay');
+  const baseDemandEl = $('#baseDemand');
+  const stepWeekEl = $('#stepWeek');
+  const stepDemandEl = $('#stepDemand');
+  const noiseEl = $('#noise');
+  const trainingEl = $('#training');
+
+  const wkLbl = $('#wk');
+  const invLbl = $('#myInv');
+  const backLbl = $('#myBack');
+  const costLbl = $('#myCost');
+  const frLbl = $('#myFR');
+  const bweLbl = $('#myBWE');
+  const orderInput = $('#orderQty');
+  const submitBtn = $('#submitOrder');
+  const undoBtn = $('#undo');
+  const startBtn = $('#start');
+  const resetBtn = $('#reset');
+  const tbl = $('#tbl tbody');
+  const rolesTbl = $('#rolesTbl tbody');
+  const chartCanvas = document.getElementById('chart');
+  const ctx = chartCanvas.getContext('2d');
+  const exportBtn = document.getElementById('export');
+
+  // Panel semana en curso
+  const cwDemand = document.getElementById('cwDemand');
+  const cwArr1 = document.getElementById('cwArr1');
+  const cwArr2 = document.getElementById('cwArr2');
+  const cwPosInv = document.getElementById('cwPosInv');
+
+  const odLbl = $('#odLbl'), sdLbl = $('#sdLbl'), hLbl = $('#hLbl'), bLbl = $('#bLbl'), bdLbl = $('#bdLbl'), swLbl = $('#swLbl'), stLbl = $('#stLbl');
+
+  const ROLES = ['retailer','wholesaler','distributor','factory'];
+
+  let state = null; // se resetea en start()
+  let snapshots = []; // para deshacer un turno en modo entrenamiento
+
+  function clone(obj){ return JSON.parse(JSON.stringify(obj)); }
+  function randn(){ let u=0,v=0; while(u===0)u=Math.random(); while(v===0)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+
+  function demandAt(t){
+    const base = +baseDemandEl.value;
+    const sw = +stepWeekEl.value;
+    const step = +stepDemandEl.value;
+    const sigma = +noiseEl.value;
+    let d = t+1 >= sw ? step : base;
+    d = Math.max(0, Math.round(d + sigma*randn()));
+    return d;
+  }
+
+  function levelFor(){
+    const mu = (+baseDemandEl.value + +stepDemandEl.value)/2; // aproximación simple
+    const cover = (+orderDelayEl.value + +shipDelayEl.value + 1);
+    const safety = Math.max(0, Math.round(0.5 * cover));
+    return Math.max(0, Math.round(mu * cover) + safety);
+  }
+
+  function newGame(){
+    const weeks = +weeksEl.value;
+    const initInv = +initInvEl.value;
+    const hCost = +hCostEl.value;
+    const bCost = +bCostEl.value;
+    const sDelay = +shipDelayEl.value;
+    const oDelay = +orderDelayEl.value;
+
+    sdLbl.textContent = sDelay; odLbl.textContent = oDelay; hLbl.textContent = hCost; bLbl.textContent = bCost; bdLbl.textContent = +baseDemandEl.value; swLbl.textContent = +stepWeekEl.value; stLbl.textContent = +stepDemandEl.value;
+
+    const planLevel = levelFor();
+
+    const nodes = ROLES.map(r=>({
+      role:r,
+      inv:initInv,
+      back:0,
+      pipelineShip:Array(sDelay).fill(0),
+      pipelineOrder:Array(oDelay).fill(0),
+      cost:0,
+      costCum:0,
+      orders:[],
+      shipments:[],
+      recOrders:[],
+      recShipments:[],
+      planLevel,
+      demandSeries:[],
+    }));
+
+    state = {
+      t:0,weeks,hCost,bCost,sDelay,oDelay,nodes,
+      history:[],
+      chart:{t:[], demand:[], myOrders:[]},
+      role: roleSel.value
+    };
+
+    snapshots = [];
+    tbl.innerHTML=''; rolesTbl.innerHTML='';
+    drawHUD(); drawChart();
+    orderInput.value = Math.max(0, Math.round((+baseDemandEl.value)));
+  }
+
+  function getNode(role){ return state.nodes[ROLES.indexOf(role)]; }
+  function upstreamOf(role){ const idx = ROLES.indexOf(role); return idx<ROLES.length-1 ? state.nodes[idx+1] : null; }
+  function downstreamOf(role){ const idx = ROLES.indexOf(role); return idx>0 ? state.nodes[idx-1] : null; }
+
+  function step(userOrder){
+    if(!state) return;
+    if(trainingEl.checked){ snapshots.push(clone(state)); undoBtn.disabled=false; }
+
+    const t = state.t;
+    const myRole = state.role;
+    const me = getNode(myRole);
+
+    // 1) Demanda consumidor y órdenes recibidas
+    const consumerDemand = demandAt(t);
+    const retailer = getNode('retailer');
+    retailer.recOrders.push(consumerDemand);
+
+    for(const n of state.nodes){
+      const arrivedOrder = n.pipelineOrder.shift() || 0;
+      n.recOrders.push(arrivedOrder);
+      n.demandSeries.push((n===retailer)?consumerDemand:arrivedOrder);
+    }
+
+    // 2) Envíos recibidos
+    for(const n of state.nodes){
+      const arrivedShipment = n.pipelineShip.shift() || 0;
+      n.recShipments.push(arrivedShipment);
+      n.inv += arrivedShipment;
+    }
+
+    // 3) Satisfacer demanda
+    for(const n of state.nodes){
+      const demandThis = (n===retailer) ? consumerDemand : n.recOrders[t];
+      const need = n.back + demandThis;
+      const ship = Math.min(need, n.inv);
+      n.inv -= ship;
+      const remaining = need - ship;
+      n.back = remaining;
+      n.shipments.push(ship);
+      const down = downstreamOf(n.role);
+      if(down){ down.pipelineShip.push(ship); }
+    }
+
+    // 4) Pedidos
+    for(const n of state.nodes){
+      let q=0;
+      if(n===me){ q = Math.max(0, Math.round(+userOrder||0)); }
+      else {
+        const inTransit = n.pipelineShip.reduce((a,b)=>a+b,0);
+        const pos = n.inv + inTransit - n.back;
+        const target = n.planLevel;
+        q = Math.max(0, Math.round(target - pos));
+      }
+      n.orders.push(q);
+      const up = upstreamOf(n.role);
+      if(up){ up.pipelineOrder.push(q); }
+    }
+
+    // 5) Producción fábrica
+    const factory = getNode('factory');
+    const prod = factory.orders[t] || 0;
+    factory.pipelineShip.push(prod);
+
+    // 6) Costos
+    for(const n of state.nodes){
+      const c = state.hCost * Math.max(0,n.inv) + state.bCost * n.back;
+      n.cost = c; n.costCum += c;
+    }
+
+    // 7) Historia usuario
+    const myRow = {
+      t:t+1,
+      demandClient: (me.role==='retailer') ? consumerDemand : me.recOrders[t],
+      recOrder: me.recOrders[t],
+      recShip: me.recShipments[t],
+      shipped: me.shipments[t],
+      inv: me.inv,
+      back: me.back,
+      order: me.orders[t],
+      cost: me.cost,
+      costCum: me.costCum,
+    };
+    state.history.push(myRow);
+
+    // 8) UI
+    wkLbl.textContent = myRow.t; invLbl.textContent = myRow.inv; backLbl.textContent = myRow.back; costLbl.textContent = myRow.costCum.toFixed(2);
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${myRow.t}</td><td>${myRow.demandClient ?? '-'}</td><td>${myRow.recOrder ?? '-'}</td><td>${myRow.recShip ?? '-'}</td><td>${myRow.shipped ?? '-'}</td><td>${myRow.inv}</td><td>${myRow.back}</td><td>${myRow.order}</td><td>${myRow.cost.toFixed(2)}</td><td>${myRow.costCum.toFixed(2)}</td>`;
+    tbl.appendChild(tr);
+
+    // Actualizar panel de semana en curso
+    const arr1 = me.pipelineShip[0] || 0; // llega la próxima semana
+    const arr2 = me.pipelineShip[1] || 0; // llega en dos semanas
+    const inShip = me.pipelineShip.reduce((a,b)=>a+b,0);
+    const posInv = me.inv + inShip - me.back;
+    cwDemand.textContent = myRow.demandClient;
+    cwArr1.textContent = arr1;
+    cwArr2.textContent = arr2;
+    cwPosInv.textContent = posInv;
+
+    // chart
+    state.chart.t.push(myRow.t);
+    state.chart.demand.push((me.role==='retailer') ? consumerDemand : me.recOrders[t]);
+    state.chart.myOrders.push(myRow.order);
+    drawChart();
+
+    // métricas por rol y cadena
+    renderRolesMetrics();
+
+    state.t++;
+    if(state.t>=state.weeks){ submitBtn.disabled = true; orderInput.disabled=true; undoBtn.disabled=true; }
+  }
+
+  function variance(arr){ if(!arr || arr.length<2) return 0; const m = arr.reduce((a,b)=>a+b,0)/arr.length; return arr.reduce((a,b)=>a+(b-m)*(b-m),0)/arr.length; }
+  function fillRate(ships, demands){ const s = ships.reduce((a,b)=>a+b,0); const d = demands.reduce((a,b)=>a+b,0)||1; return s/d; }
+
+  function renderRolesMetrics(){
+    rolesTbl.innerHTML='';
+    let totCost=0, bweSum=0, bweCnt=0;
+    const my = getNode(state.role);
+    const myFR = fillRate(my.shipments, my.demandSeries);
+    const myVarOrd = variance(my.orders);
+    const myVarDem = variance(my.demandSeries);
+    const myBWE = (myVarDem>0)? (myVarOrd/myVarDem): 0;
+    frLbl.textContent = (myFR*100).toFixed(1)+'%';
+    bweLbl.textContent = (myBWE).toFixed(2);
+
+    for(const n of state.nodes){
+      totCost += n.costCum;
+      const vO = variance(n.orders); const vD = variance(n.demandSeries); const bwe = vD>0? vO/vD : 0;
+      if(vD>0){ bweSum += bwe; bweCnt++; }
+      const fr = fillRate(n.shipments, n.demandSeries)*100;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${n.role}</td><td>${Math.round(n.inv)}</td><td>${Math.round(n.back)}</td><td>${fr.toFixed(1)}%</td><td>${vO.toFixed(2)}</td><td>${vD.toFixed(2)}</td><td>${bwe.toFixed(2)}</td><td>${n.costCum.toFixed(2)}</td>`;
+      rolesTbl.appendChild(tr);
+    }
+    $('#totCost').textContent = totCost.toFixed(2);
+    $('#totBWE').textContent = (bweCnt? (bweSum/bweCnt):0).toFixed(2);
+  }
+
+  function drawHUD(){ wkLbl.textContent='1'; invLbl.textContent = getNode(roleSel.value).inv; backLbl.textContent='0'; costLbl.textContent='0.00'; frLbl.textContent='0%'; bweLbl.textContent='—'; }
+
+  function drawChart(){
+    const W = chartCanvas.clientWidth|0; const H = chartCanvas.clientHeight|0;
+    chartCanvas.width = W; chartCanvas.height = H;
+    ctx.clearRect(0,0,W,H);
+
+    const xs = state ? state.chart.t : [];
+    const ys1 = state ? state.chart.demand : [];
+    const ys2 = state ? state.chart.myOrders : [];
+    const pad = 36;
+    ctx.strokeStyle = '#2a3659'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.moveTo(pad,pad); ctx.lineTo(pad,H-pad); ctx.stroke();
+    function scale(arr){ const max = Math.max(1, ...arr, 10); const min = 0; const sx = (x)=> pad + (W-2*pad) * ((x-1)/Math.max(1,(xs.length-1||1))); const sy = (y)=> (H-pad) - (H-2*pad) * ((y-min)/(max-min)); return {sx,sy,max}; }
+    const sc = scale([...(ys1||[]), ...(ys2||[])]);
+    function plot(arr, color){ if(!arr || arr.length===0) return; ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath(); arr.forEach((y,i)=>{const x=i+1; const X=sc.sx(x), Y=sc.sy(y); if(i===0)ctx.moveTo(X,Y); else ctx.lineTo(X,Y);}); ctx.stroke(); }
+    plot(ys1,'#8da2c0'); // demanda
+    plot(ys2,'#5ee1a6'); // pedidos
+    ctx.fillStyle='#8da2c0'; ctx.fillRect(pad, pad-14, 14, 4); ctx.fillStyle='#eaf1ff'; ctx.fillText('Demanda percibida', pad+20, pad-6); ctx.fillStyle='#5ee1a6'; ctx.fillRect(pad+170, pad-14, 14, 4); ctx.fillStyle='#eaf1ff'; ctx.fillText('Pedidos emitidos', pad+190, pad-6);
+  }
+
+  function exportCSV(){
+    if(!state) return;
+    const rows = [['t','rol','demanda_cliente','orden_recibida','envio_recibido','despachado','inventario_fin','backlog_fin','pedido_emitido','costo_t','costo_acum']];
+    state.history.forEach(r=>{ rows.push([r.t,state.role,r.demandClient,r.recOrder,r.recShip,r.shipped,r.inv,r.back,r.order,r.cost.toFixed(2),r.costCum.toFixed(2)]); });
+    // métricas por rol
+    rows.push([]); rows.push(['ROL','inv_actual','backlog','fill_rate','var_pedidos','var_demanda','BWE','costo_acum']);
+    for(const n of state.nodes){
+      const vO = variance(n.orders); const vD = variance(n.demandSeries); const fr = fillRate(n.shipments, n.demandSeries);
+      rows.push([n.role, Math.round(n.inv), Math.round(n.back), fr.toFixed(4), vO.toFixed(4), vD.toFixed(4), (vD? (vO/vD):0).toFixed(4), n.costCum.toFixed(2)]);
+    }
+    const csv = rows.map(r=> r.map(x=> (x==null?'':String(x))).join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='beer_game_result.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // Self-tests muy básicos
+  function runSelfTests(){
+    try {
+      console.assert(document.getElementById('start'), 'startBtn existe');
+      console.assert(document.getElementById('noise'), 'input #noise existe');
+      console.assert(document.getElementById('cwArr1') && document.getElementById('cwArr2'), 'panel semana en curso OK');
+      console.assert(variance([1,2,3]) > 0, 'variance básica');
+      console.assert(fillRate([1,1,1],[1,1,1]) === 1, 'fillRate 100%');
+      const d = demandAt(0); console.assert(Number.isFinite(d) && d>=0, 'demanda válida');
+    } catch(e){ console.warn('Self-tests warning:', e); }
+  }
+
+  // Tooltips: click/tap y teclado
+  function initTooltips(){
+    document.querySelectorAll('.help').forEach(h=>{
+      h.addEventListener('click', (e)=>{ e.stopPropagation(); h.classList.toggle('show'); });
+      h.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); h.classList.toggle('show'); }});
+    });
+    document.addEventListener('click', ()=>{ document.querySelectorAll('.help.show').forEach(h=> h.classList.remove('show')); });
+  }
+
+  // Events
+  startBtn.addEventListener('click', ()=>{ newGame(); submitBtn.disabled=false; orderInput.disabled=false; orderInput.focus(); });
+  resetBtn.addEventListener('click', ()=>{ location.reload(); });
+  submitBtn.addEventListener('click', ()=>{ if(!state) return; step(orderInput.value); orderInput.focus(); orderInput.select(); });
+  window.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); submitBtn.click(); }});
+  undoBtn.addEventListener('click', ()=>{ if(trainingEl.checked && snapshots.length){ state = snapshots.pop(); drawChart(); renderRolesMetrics();
+      tbl.innerHTML=''; state.history.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${r.t}</td><td>${r.demandClient ?? '-'}</td><td>${r.recOrder ?? '-'}</td><td>${r.recShip ?? '-'}</td><td>${r.shipped ?? '-'}</td><td>${r.inv}</td><td>${r.back}</td><td>${r.order}</td><td>${r.cost.toFixed(2)}</td><td>${r.costCum.toFixed(2)}</td>`; tbl.appendChild(tr); });
+      wkLbl.textContent = state.history.at(-1)?.t || '1';
+      const me = getNode(state.role); invLbl.textContent=me.inv; backLbl.textContent=me.back; costLbl.textContent=me.costCum.toFixed(2); }
+    if(!snapshots.length) undoBtn.disabled=true; });
+  exportBtn.addEventListener('click', exportCSV);
+
+  // Auto init
+  newGame();
+  runSelfTests();
+  initTooltips();
+})();
+</script>
+</body>
+</html>
